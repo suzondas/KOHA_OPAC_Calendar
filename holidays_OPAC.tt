@@ -1,0 +1,443 @@
+[% INCLUDE 'doc-head-open.inc' %]
+<title>Koha &rsaquo; Tools &rsaquo; [% branchname %] Calendar</title>
+[% INCLUDE 'doc-head-close.inc' %]
+[% INCLUDE 'calendar.inc' %]
+<link rel="stylesheet" type="text/css" href="[% themelang %]/css/datatables.css" />
+[% INCLUDE 'datatables.inc' %]
+<script type="text/javascript">
+//<![CDATA[
+    var weekdays = new Array(_("Sundays"),_("Mondays"),_("Tuesdays"),_("Wednesdays"),_("Thursdays"),_("Fridays"),_("Saturdays"));
+
+    /* Creates all the structures to deal with all different kinds of holidays */
+    var week_days = new Array();
+    var holidays = new Array();
+    var holidates = new Array();
+    var exception_holidays = new Array();
+    var day_month_holidays = new Array();
+    var hola= "[% code %]";
+    [% FOREACH WEEK_DAYS_LOO IN WEEK_DAYS_LOOP %]
+    week_days["[% WEEK_DAYS_LOO.KEY %]"] = {title:"[% WEEK_DAYS_LOO.TITLE %]", description:"[% WEEK_DAYS_LOO.DESCRIPTION %]"};
+    [% END %]
+    [% FOREACH HOLIDAYS_LOO IN HOLIDAYS_LOOP %]
+    holidates.push("[% HOLIDAYS_LOO.KEY %]");
+    holidays["[% HOLIDAYS_LOO.KEY %]"] = {title:"[% HOLIDAYS_LOO.TITLE %]", description:"[% HOLIDAYS_LOO.DESCRIPTION %]"};
+
+    [% END %]
+    [% FOREACH EXCEPTION_HOLIDAYS_LOO IN EXCEPTION_HOLIDAYS_LOOP %]
+    exception_holidays["[% EXCEPTION_HOLIDAYS_LOO.KEY %]"] = {title:"[% EXCEPTION_HOLIDAYS_LOO.TITLE %]", description:"[% EXCEPTION_HOLIDAYS_LOO.DESCRIPTION %]"};
+    [% END %]
+    [% FOREACH DAY_MONTH_HOLIDAYS_LOO IN DAY_MONTH_HOLIDAYS_LOOP %]
+    day_month_holidays["[% DAY_MONTH_HOLIDAYS_LOO.KEY %]"] = {title:"[% DAY_MONTH_HOLIDAYS_LOO.TITLE %]", description:"[% DAY_MONTH_HOLIDAYS_LOO.DESCRIPTION %]"};
+    [% END %]
+
+    function holidayOperation(formObject, opType) {
+        var op = document.getElementsByName('operation');
+        op[0].value = opType;
+        formObject.submit();
+    }
+
+    // This function shows the "Show Holiday" panel //
+    function showHoliday (exceptionPosibility, dayName, day, month, year, weekDay, title, description, holidayType) {
+        $("#newHoliday").slideUp("fast");
+        $("#showHoliday").slideDown("fast");
+        $('#showDaynameOutput').html(dayName);
+        $('#showDayname').val(dayName);
+        $('#showBranchNameOutput').html($("#branch :selected").text());
+        $('#showBranchName').val($("#branch").val());
+        $('#showDayOutput').html(day);
+        $('#showDay').val(day);
+        $('#showMonthOutput').html(month);
+        $('#showMonth').val(month);
+        $('#showYearOutput').html(year);
+        $('#showYear').val(year);
+        $('#showDescription').val(description);
+        $('#showWeekday:first').val(weekDay);
+        $('#showTitle').val(title);
+        $('#showHolidayType').val(holidayType);
+
+        if (holidayType == 'exception') {
+            $("#showOperationDelLabel").html(_("Delete this exception."));
+            $("#holtype").attr("class","key exception").html(_("Holiday exception"));
+        } else if(holidayType == 'weekday') {
+            $("#showOperationDelLabel").html(_("Delete this holiday."));
+            $("#holtype").attr("class","key repeatableweekly").html(_("Holiday repeating weekly"));
+        } else if(holidayType == 'daymonth') {
+            $("#showOperationDelLabel").html(_("Delete this holiday."));
+            $("#holtype").attr("class","key repeatableyearly").html(_("Holiday repeating yearly"));
+        } else {
+            $("#showOperationDelLabel").html(_("Delete this holiday."));
+            $("#holtype").attr("class","key holiday").html(_("Unique holiday"));
+        }
+        
+        if (exceptionPosibility == 1) {
+            $("#exceptionPosibility").parent().show();
+        } else {
+            $("#exceptionPosibility").parent().hide();
+        }
+    }
+
+    // This function shows the "Add Holiday" panel //
+    function newHoliday (dayName, day, month, year, weekDay) {
+        $("#showHoliday").slideUp("fast");
+        $("#newHoliday").slideDown("fast");
+        $("#newDaynameOutput").html(dayName);
+        $("#newDayname").val(dayName);
+        $("#newBranchNameOutput").html($('#branch :selected').text());
+        $("#newBranchName").val($('#branch').val());
+        $("#newDayOutput").html(day);
+        $("#newDay").val(day);
+        $("#newMonthOutput").html(month);
+        $("#newMonth").val(month);
+        $("#newYearOutput").html(year);
+        $("#newYear").val(year);
+        $("#newWeekday:first").val(weekDay);
+    }
+
+    function hidePanel(aPanelName) {
+        $("#"+aPanelName).slideUp("fast");
+    }
+
+    function changeBranch () {
+        var branch = $("#branch option:selected").val();
+        location.href='/cgi-bin/koha/tools/holidays.pl?branch=' + branch + '&calendardate=' + "[% calendardate %]";
+    }
+
+    function Help() {
+        newin=window.open("/cgi-bin/koha/help.pl","KohaHelp",'width=600,height=600,toolbar=false,scrollbars=yes');
+    }
+
+    /* This function gives css clases to each kind of day */
+    function dateStatusHandler(date) {
+        date = new Date(date);
+        var day = date.getDate();
+        var month = date.getMonth() + 1;
+        var year = date.getFullYear();
+        var weekDay = date.getDay();
+        var dayMonth = month + '/' + day;
+        var dateString = year + '/' + month + '/' + day;
+        if (exception_holidays[dateString] != null) {
+            return [true, "exception", _("Exception: %s").format(exception_holidays[dateString].title)];
+        } else if ( week_days[weekDay] != null ){
+            return [true, "repeatableweekly", _("Weekly holiday: %s").format(week_days[weekDay].title)];
+        } else if ( day_month_holidays[dayMonth] != null ) {
+            return [true, "repeatableyearly", _("Yearly holiday: %s").format(day_month_holidays[dayMonth].title)];
+        } else if (holidays[dateString] != null) {
+            return [true, "holiday", _("Single holiday: %s").format(holidays[dateString].title)];
+        } else {
+            return [true, "normalday", _("Normal day")];
+        }
+    }
+
+    /* This function is in charge of showing the correct panel considering the kind of holiday */
+    function dateChanged(calendar) {
+        calendar = new Date(calendar);
+        var day = calendar.getDate();
+        var month = calendar.getMonth() + 1;
+        var year = calendar.getFullYear();
+        var weekDay = calendar.getDay();
+        var dayName = weekdays[weekDay];
+        var dayMonth = month + '/' + day;
+        var dateString = year + '/' + month + '/' + day;
+            if (holidays[dateString] != null) {
+                showHoliday(0, dayName, day, month, year, weekDay, holidays[dateString].title,     holidays[dateString].description, 'ymd');
+            } else if (exception_holidays[dateString] != null) {
+                showHoliday(0, dayName, day, month, year, weekDay, exception_holidays[dateString].title, exception_holidays[dateString].description, 'exception');
+            } else if (week_days[weekDay] != null) {
+                showHoliday(1, dayName, day, month, year, weekDay, week_days[weekDay].title,     week_days[weekDay].description, 'weekday');
+            } else if (day_month_holidays[dayMonth] != null) {
+                showHoliday(1, dayName, day, month, year, weekDay, day_month_holidays[dayMonth].title, day_month_holidays[dayMonth].description, 'daymonth');
+            } else {
+                newHoliday(dayName, day, month, year, weekDay);
+            }
+    };
+
+    $(document).ready(function() {
+
+var event = $(document).click(function(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return false;
+});
+
+// disable right click
+$(document).bind('contextmenu', function(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return false;
+});
+
+
+        $(".hint").hide();
+        $("#branch").change(function(){
+            changeBranch();
+        });
+        $("#holidayweeklyrepeatable").dataTable($.extend(true, {}, dataTablesDefaults, {
+            "sDom": 't',
+            "bPaginate": false
+        }));
+        $("#holidayexceptions,#holidaysyearlyrepeatable,#holidaysunique").dataTable($.extend(true, {}, dataTablesDefaults, {
+            "sDom": 't',
+            "aoColumns": [
+                { "sType": "title-string" },null,null
+            ],
+            "bPaginate": false
+        }));
+        $("a.helptext").click(function(){
+            $(this).parent().find(".hint").toggle(); return false;
+        });
+        $("#dateofrange").datepicker();
+        $("#datecancelrange").datepicker();
+        $("#dateofrange").each(function () { this.value = "" });
+        $("#datecancelrange").each(function () { this.value = "" });
+        $("#jcalendar-container").datepicker({
+          beforeShowDay: function(thedate) {
+            var day = thedate.getDate();
+            var month = thedate.getMonth() + 1;
+            var year = thedate.getFullYear();
+            var dateString = year + '/' + month + '/' + day;
+            return dateStatusHandler(dateString);
+            },
+        onSelect: function(dateText, inst) {
+            dateChanged($(this).datepicker("getDate"));
+        },
+        defaultDate: new Date("[% keydate %]")
+    });
+    });
+//]]>
+</script>
+<style type="text/css"> .key { padding : 3px; white-space:nowrap; line-height:230%; }
+.ui-datepicker { font-size : 150%; }
+.ui-datepicker th, .ui-datepicker .ui-datepicker-title select { font-size : 80%; }
+.ui-datepicker td a { padding : .5em; }
+.ui-datepicker .ui-datepicker-buttonpane button.ui-datepicker-current { font-size : 80%; }
+.key { padding : 3px; white-space:nowrap; line-height:230%; }
+.normalday { background-color :  #EDEDED; color :  Black; border : 1px solid #BCBCBC; }
+.exception { background-color :  #b3d4ff; color :  Black; border : 1px solid #BCBCBC; }
+.holiday {  background-color :  #ffaeae; color :  Black;  border : 1px solid #BCBCBC; }
+.repeatableweekly {  background-color :  #FFFF99; color :  Black;  border : 1px solid #BCBCBC; }
+.repeatableyearly {  background-color :  #FFCC66; color :  Black;  border : 1px solid #BCBCBC; }
+td.exception a.ui-state-default { background:  #b3d4ff none; color :  Black; border : 1px solid #BCBCBC; }
+td.holiday a.ui-state-default {  background:  #ffaeae none; color :  Black;  border : 1px solid #BCBCBC; }
+td.repeatableweekly a.ui-state-default {  background:  #FFFF99 none; color :  Black;  border : 1px solid #BCBCBC; }
+td.repeatableyearly a.ui-state-default {  background:  #FFCC66 none; color :  Black;  border : 1px solid #BCBCBC; }
+.information { z-index : 1; background-color :  #DCD2F1; width : 300px; display : none; border : 1px solid #000000; color :  #000000; font-size :  8pt; font-weight :  bold; background-color :  #FFD700; cursor :  pointer; padding : 2px; }
+.panel { z-index : 1; display : none; border : 3px solid #CCC; padding : 3px; margin-top: .3em;  background-color: #FEFEFE; } fieldset.brief { border : 0; margin-top: 0; }
+#showHoliday { margin : .5em 0; } h1 select { width: 20em; } div.yui-b fieldset.brief ol { font-size:100%; } div.yui-b fieldset.brief li, div.yui-b fieldset.brief li.radio  { padding:0.2em 0; } .help { margin:.3em 0;border:1px solid #EEE;padding:.3em .7em; font-size : 90%; } #holidayweeklyrepeatable, #holidaysyearlyrepeatable, #holidaysunique, #holidayexceptions { font-size : 90%; margin-bottom : 1em;} .calendar td, .calendar th, .calendar .button, .calendar tbody .day { padding : .7em; font-size: 110%; } .calendar { width: auto; border : 0; }
+</style>
+</head>
+<body id="tools_holidays" class="tools" style="padding:25px;border:1px solid grey;">
+
+<script>
+
+var event = $(document).click(function(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return false;
+});
+
+// disable right click
+$(document).bind('contextmenu', function(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    return false;
+});
+
+
+</script>
+
+
+
+
+    <!-- *************************************************************************************** -->
+    <!-- ******                          END OF FLAT PANELS                               ****** -->
+    <!-- *************************************************************************************** -->
+
+<!-- ************************************************************************************** -->
+<!-- ******                              MAIN SCREEN CODE                            ****** -->
+<!-- ************************************************************************************** -->
+
+
+    <!-- *************************************************************************************** -->
+    <!-- ******                          END OF FLAT PANELS                               ****** -->
+    <!-- *************************************************************************************** -->
+
+<!-- ************************************************************************************** -->
+<!-- ******                              MAIN SCREEN CODE                            ****** -->
+<!-- ************************************************************************************** -->
+<h1 style="color:green;" align="center">Calendar of [Your] Library</h1><br/>
+<br/><hr><br/><br/>
+<div class="help">
+
+<h4>Indication</h4>
+    <p>
+        <span class="key normalday">Working day</span>
+        <span class="key holiday">Unique holiday</span>
+        <span class="key repeatableweekly">Holiday repeating weekly</span>
+        <span class="key repeatableyearly">Holiday repeating yearly</span>
+        <span class="key exception">Holiday exception</span>
+    </p>
+</div><br/><br/><h4>&nbsp;&nbsp;Click on a day to know it's description</h4>
+<div style="float:left;padding:10px;" id="jcalendar-container"></div>
+<div style="float:left;width:40px;"></div>
+ <div style="float:left;padding:20px;position:inline-block;width:350px;" class="panel" id="showHoliday">
+         <h3 align="Center">Description of Holiday</h3><br/><br/>
+ <span id="holtype"></span><br/>
+
+ <li>
+                <strong>From Date:</strong>
+                <span id="showDaynameOutput"></span>, 
+                
+                                [% IF ( dateformat == "us" ) %]<span id="showMonthOutput"></span>/<span id="showDayOutput"></span>/<span id="showYearOutput"></span>[% ELSIF ( dateformat == "metric" ) %]<span id="showDayOutput"></span>/<span id="showMonthOutput"></span>/<span id="showYearOutput"></span>[% ELSE %]<span id="showYearOutput"></span>/<span id="showMonthOutput"></span>/<span id="showDayOutput"></span>[% END %]
+
+                <input type="hidden" id="showDayname" name="showDayname" />
+                <input type="hidden" id="showWeekday" name="showWeekday" />
+                <input type="hidden" id="showDay" name="showDay" />
+                <input type="hidden" id="showMonth" name="showMonth" />
+                <input type="hidden" id="showYear" name="showYear" />
+            </li><br/>
+            <li><label for="showTitle"><b>Title:</b> </label><br/><input disabled="disabled" type="text" style="width:100%;background:none;border:none;"name="showTitle" id="showTitle" size="35" /></li>
+            <!-- showTitle is necessary for exception radio button to work properly -->
+            <br/><li style="width:100%;">
+                <label for="showDescription"><b>Description:</b></label><br/>
+                <input type="text" id="showDescription" disabled="disabled" style="background:none;border:none; width:100%;" name="showDescription"/>
+            </li>
+            
+    </div>
+
+<div  style="float:left;padding:20px;position:inline-block;width:350px;" class="panel" id="newHoliday" ">
+                     
+<li>
+                <strong>From date:</strong>
+                <span id="newDaynameOutput"></span>, 
+
+                         [% IF ( dateformat == "us" ) %]<span id="newMonthOutput"></span>/<span id="newDayOutput"></span>/<span id="newYearOutput"></span>[% ELSIF ( dateformat == "metric" ) %]<span id="newDayOutput"></span>/<span id="newMonthOutput"></span>/<span id="newYearOutput"></span>[% ELSE %]<span id="newYearOutput"></span>/<span id="newMonthOutput"></span>/<span id="newDayOutput"></span>[% END %]
+
+                <input type="hidden" id="newDayname" name="showDayname" />
+                <input type="hidden" id="newWeekday" name="newWeekday" />
+                <input type="hidden" id="newDay" name="newDay" />
+                <input type="hidden" id="newMonth" name="newMonth" />
+                <input type="hidden" id="newYear" name="newYear" />
+            </li><br/><li><label><b>Description:</b></lable>&nbsp;Working Day</li><br/>
+
+<li>We are open from 8.00 AM to 9.00 PM</li>
+           
+    </div>
+
+   <div style="padding-left:10px;margin:5px;float:none;clear:both;"></div>
+<div style="padding:20px;margin:1px solid grey;">
+
+
+
+</div>
+<div class="yui-u">
+
+<div id="holiday-list">
+<!-- Exceptions First -->
+<!--   this will probably always have the least amount of data -->
+[% IF ( EXCEPTION_HOLIDAYS_LOOP ) %]
+<br/><br/>
+<h3>Exceptions</h3><br/>
+  <table id="holidayexceptions">
+<thead><tr>
+  <th class="exception">Date</th>
+  <th class="exception">Title</th>
+  <th class="exception">Description</th>
+</tr>
+</thead>
+<tbody>
+  [% FOREACH EXCEPTION_HOLIDAYS_LOO IN EXCEPTION_HOLIDAYS_LOOP %]
+  <tr>
+  <td><a href="/cgi-bin/koha/tools/holidays.pl?branch=[% branch %]&amp;calendardate=[% EXCEPTION_HOLIDAYS_LOO.DATE %]"><span title="[% EXCEPTION_HOLIDAYS_LOO.DATE_SORT %]">[% EXCEPTION_HOLIDAYS_LOO.DATE %]</span></a></td>
+  <td>[% EXCEPTION_HOLIDAYS_LOO.TITLE %]</td>
+  <td>[% EXCEPTION_HOLIDAYS_LOO.DESCRIPTION %]</td> 
+  </tr>
+  [% END %] 
+</tbody>
+</table>
+[% END %]
+
+[% IF ( WEEK_DAYS_LOOP ) %]<br/><br/>
+<h3>Weekly - Repeatable Holidays</h3>
+<table id="holidayweeklyrepeatable">
+<thead>
+<tr>
+  <th class="repeatableweekly">Day of week</th>
+  <th class="repeatableweekly">Title</th>
+  <th class="repeatableweekly">Description</th>
+</tr>
+</thead>
+<tbody>
+  [% FOREACH WEEK_DAYS_LOO IN WEEK_DAYS_LOOP %]
+  <tr>
+  <td>
+<script type="text/javascript">
+  document.write(weekdays[ [% WEEK_DAYS_LOO.KEY %]]);
+</script>
+  </td> 
+  <td>[% WEEK_DAYS_LOO.TITLE %]</td> 
+  <td>[% WEEK_DAYS_LOO.DESCRIPTION %]</td> 
+  </tr>
+  [% END %] 
+</tbody>
+</table>
+[% END %]
+
+[% IF ( DAY_MONTH_HOLIDAYS_LOOP ) %]<br/><br/>
+<h3>Yearly - Repeatable Holidays</h3>
+<table id="holidaysyearlyrepeatable">
+<thead>
+<tr>
+  [% IF ( dateformat == "metric" ) %]
+  <th class="repeatableyearly">Day/Month</th>
+  [% ELSE %]
+  <th class="repeatableyearly">Month/Day</th>
+  [% END %]
+  <th class="repeatableyearly">Title</th>
+  <th class="repeatableyearly">Description</th>
+</tr>
+</thead>
+<tbody>
+  [% FOREACH DAY_MONTH_HOLIDAYS_LOO IN DAY_MONTH_HOLIDAYS_LOOP %]
+  <tr>
+  <td><span title="[% DAY_MONTH_HOLIDAYS_LOO.DATE_SORT %]">[% DAY_MONTH_HOLIDAYS_LOO.DATE %]</span></td>
+  <td>[% DAY_MONTH_HOLIDAYS_LOO.TITLE %]</td> 
+  <td>[% DAY_MONTH_HOLIDAYS_LOO.DESCRIPTION %]</td> 
+  </tr>
+  [% END %] 
+</tbody>
+</table>
+[% END %]
+
+[% IF ( HOLIDAYS_LOOP ) %]<br/><br/>
+<h3>Unique Holidays</h3>
+<table id="holidaysunique">
+<thead>
+<tr>
+  <th style="pointer-events: none;cursor: default;">Date</th>
+  <th class="holiday">Title</th>
+  <th class="holiday">Description</th>
+</tr>
+</thead>
+<tbody>
+    [% FOREACH HOLIDAYS_LOO IN HOLIDAYS_LOOP %]
+<tr>
+  <td><a href="/cgi-bin/koha/tools/holidays.pl?branch=[% branch %]&amp;calendardate=[% HOLIDAYS_LOO.DATE %]"><span title="[% HOLIDAYS_LOO.DATE_SORT %]">[% HOLIDAYS_LOO.DATE %]</span></a></td>
+  <td>[% HOLIDAYS_LOO.TITLE %]</td>
+  <td>[% HOLIDAYS_LOO.DESCRIPTION %]</td>
+</tr>
+  [% END %] 
+</tbody>
+</table>
+[% END %]
+</div>
+</div>
+</div>
+</div>
+</div><br/>
+<hr><br/>
+<div style="background-color:none;border:none;color:grey;width:100%;height:40px;"><br/><p align="center">Powered by KOHA | Customized by Suzon Das</hp></div>
+
