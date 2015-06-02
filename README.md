@@ -1,5 +1,6 @@
 # KOHA_OPAC_Calendar
-## To add Calendar on OPAC Interface, use these files. Download these files.
+## Users can see the Calendar page without login. After adding the following files, link the page in the OPAC.
+## To add Calendar on OPAC Interface, use files- holidays_opac.pl and holidays_OPAC.tt. 
 ## Change the Code of Line number 42 in holidays_opac.pl .
   >>> my $branch="[your branch]";
   Replace [your branch] with your Library Branch Code.
