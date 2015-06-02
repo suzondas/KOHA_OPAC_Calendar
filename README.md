@@ -5,7 +5,7 @@
   Replace [your branch] with your Library Branch Code.
   
 ## Upload holidays_opac.pl in /koha/intranet/cgi-bin/tools folder and holidays_OPAC.tt in /koha/intranet/htdocs/intranet-tmpl/prog/en/modules/tools folder.
-## Then give permission (chmod 777) both of them .
+## Then give permission (chmod 755 holidays_opac.pl and chmod 644 holidays_OPAC.tt).
 ## Now open http://[your IP]:8080/cgi-bin/koha/tools/holidays_opac.pl in browser.
 
 ## <!!!-- Important: Customize the Holidays and Name according to your Library -!!!>
