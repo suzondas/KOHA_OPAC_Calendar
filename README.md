@@ -10,5 +10,5 @@
 
 ## <!!!-- Important: Customize the Holidays and Name according to your Library -!!!>
 
-## Powered by KOHA | Customized by Suzon Das ####
+## Powered by KOHA ####
 
